@@ -1,9 +1,23 @@
 #!/bin/bash
 
 AUTO_CONNECT=0
-if [ "$1" = "-y" ] || [ "$1" = "--yes" ]; then
-    AUTO_CONNECT=1
-fi
+for arg in "$@"; do
+    case "$arg" in
+        -y|--yes)
+            AUTO_CONNECT=1
+            ;;
+        -h|--help)
+            echo "Usage: wifi-qr-impala [--yes]"
+            echo "  --yes  Skip confirmation prompt before connecting"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: wifi-qr-impala [--yes]"
+            exit 2
+            ;;
+    esac
+done
 
 # 1. Identify your wireless interface (usually wlan0)
 WIFI_DEV=$(iwctl device list | grep 'station' | awk '{print $2}' | head -n 1)
@@ -39,13 +53,18 @@ if [ -z "$SECURITY" ]; then
     SECURITY="WPA"
 fi
 
+if [ "$SECURITY" != "nopass" ] && [ -z "$PASS" ]; then
+    echo "Could not parse WiFi passphrase from: $RAW_DATA"
+    exit 1
+fi
+
 echo "Scanned network:"
 echo "  SSID: $SSID"
 echo "  Security: $SECURITY"
 
 if [ "$AUTO_CONNECT" -ne 1 ]; then
     read -r -p "Connect now? [Y/n] " CONFIRM
-    if [ "$CONFIRM" = "n" ] || [ "$CONFIRM" = "N" ]; then
+    if [[ "${CONFIRM,,}" =~ ^(n|no)$ ]]; then
         echo "Cancelled by user."
         exit 0
     fi
