@@ -29,7 +29,7 @@ sudo pacman -S iwd zbar
 Copy the script somewhere on your `$PATH`:
 
 ```bash
-cp wifi-qr-impala.sh ~/.local/bin/wifi-qr-impala
+cp wifi-qr-impala ~/.local/bin/
 chmod +x ~/.local/bin/wifi-qr-impala
 ```
 
