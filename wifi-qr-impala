@@ -64,10 +64,12 @@ echo "  Security: $SECURITY"
 
 if [ "$AUTO_CONNECT" -ne 1 ]; then
     read -r -p "Connect now? [Y/n] " CONFIRM
-    if [[ "${CONFIRM,,}" =~ ^(n|no)$ ]]; then
+    case "$CONFIRM" in
+        [Nn]|[Nn][Oo])
         echo "Cancelled by user."
         exit 0
-    fi
+        ;;
+    esac
 fi
 
 # 4. Connect using iwctl
