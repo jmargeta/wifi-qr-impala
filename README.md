@@ -39,12 +39,21 @@ chmod +x ~/.local/bin/wifi-qr-impala
 wifi-qr-impala
 ```
 
-Point your webcam at a Wi-Fi QR code. The script scans it, extracts the credentials, and connects. It exits automatically after the first successful scan.
+Point your webcam at a Wi-Fi QR code. The script scans it, shows the detected SSID/security, asks for confirmation, then connects.
+
+Skip the confirmation prompt:
+
+```bash
+wifi-qr-impala --yes
+```
 
 ### Example output
 
 ```
 Opening webcam... Point it at the QR code.
+Scanned network:
+  SSID: MyNetwork
+  Security: WPA
 Attempting to connect to 'MyNetwork' on wlan0...
 Successfully connected!
 ```

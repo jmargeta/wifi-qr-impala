@@ -1,5 +1,24 @@
 #!/bin/bash
 
+AUTO_CONNECT=0
+for arg in "$@"; do
+    case "$arg" in
+        -y|--yes)
+            AUTO_CONNECT=1
+            ;;
+        -h|--help)
+            echo "Usage: wifi-qr-impala [--yes]"
+            echo "  --yes  Skip confirmation prompt before connecting"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: wifi-qr-impala [--yes]"
+            exit 2
+            ;;
+    esac
+done
+
 # 1. Identify your wireless interface (usually wlan0)
 WIFI_DEV=$(iwctl device list | grep 'station' | awk '{print $2}' | head -n 1)
 
@@ -19,19 +38,47 @@ if [ -z "$RAW_DATA" ]; then
     exit 1
 fi
 
-# 3. Parse the SSID and Password from the WIFI: URI
+# 3. Parse credentials from the WIFI: URI
 # Format: WIFI:S:MyNetwork;T:WPA;P:MyPassword;;
 SSID=$(echo "$RAW_DATA" | sed -n 's/.*S:\([^;]*\);.*/\1/p')
+SECURITY=$(echo "$RAW_DATA" | sed -n 's/.*T:\([^;]*\);.*/\1/p')
 PASS=$(echo "$RAW_DATA" | sed -n 's/.*P:\([^;]*\);.*/\1/p')
 
-if [ -z "$SSID" ] || [ -z "$PASS" ]; then
+if [ -z "$SSID" ]; then
     echo "Could not parse WiFi credentials from: $RAW_DATA"
     exit 1
 fi
 
+if [ -z "$SECURITY" ]; then
+    SECURITY="WPA"
+fi
+
+if [ "$SECURITY" != "nopass" ] && [ -z "$PASS" ]; then
+    echo "Could not parse WiFi passphrase from: $RAW_DATA"
+    exit 1
+fi
+
+echo "Scanned network:"
+echo "  SSID: $SSID"
+echo "  Security: $SECURITY"
+
+if [ "$AUTO_CONNECT" -ne 1 ]; then
+    read -r -p "Connect now? [Y/n] " CONFIRM
+    case "$CONFIRM" in
+        [Nn]|[Nn][Oo])
+        echo "Cancelled by user."
+        exit 0
+        ;;
+    esac
+fi
+
 # 4. Connect using iwctl
 echo "Attempting to connect to '$SSID' on $WIFI_DEV..."
-iwctl station "$WIFI_DEV" connect "$SSID" --passphrase "$PASS"
+if [ "$SECURITY" = "nopass" ]; then
+    iwctl station "$WIFI_DEV" connect "$SSID"
+else
+    iwctl station "$WIFI_DEV" connect "$SSID" --passphrase "$PASS"
+fi
 
 if [ $? -eq 0 ]; then
     echo "Successfully connected!"
