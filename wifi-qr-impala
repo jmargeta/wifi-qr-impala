@@ -1,5 +1,10 @@
 #!/bin/bash
 
+AUTO_CONNECT=0
+if [ "$1" = "-y" ] || [ "$1" = "--yes" ]; then
+    AUTO_CONNECT=1
+fi
+
 # 1. Identify your wireless interface (usually wlan0)
 WIFI_DEV=$(iwctl device list | grep 'station' | awk '{print $2}' | head -n 1)
 
@@ -19,19 +24,40 @@ if [ -z "$RAW_DATA" ]; then
     exit 1
 fi
 
-# 3. Parse the SSID and Password from the WIFI: URI
+# 3. Parse credentials from the WIFI: URI
 # Format: WIFI:S:MyNetwork;T:WPA;P:MyPassword;;
 SSID=$(echo "$RAW_DATA" | sed -n 's/.*S:\([^;]*\);.*/\1/p')
+SECURITY=$(echo "$RAW_DATA" | sed -n 's/.*T:\([^;]*\);.*/\1/p')
 PASS=$(echo "$RAW_DATA" | sed -n 's/.*P:\([^;]*\);.*/\1/p')
 
-if [ -z "$SSID" ] || [ -z "$PASS" ]; then
+if [ -z "$SSID" ]; then
     echo "Could not parse WiFi credentials from: $RAW_DATA"
     exit 1
 fi
 
+if [ -z "$SECURITY" ]; then
+    SECURITY="WPA"
+fi
+
+echo "Scanned network:"
+echo "  SSID: $SSID"
+echo "  Security: $SECURITY"
+
+if [ "$AUTO_CONNECT" -ne 1 ]; then
+    read -r -p "Connect now? [Y/n] " CONFIRM
+    if [ "$CONFIRM" = "n" ] || [ "$CONFIRM" = "N" ]; then
+        echo "Cancelled by user."
+        exit 0
+    fi
+fi
+
 # 4. Connect using iwctl
 echo "Attempting to connect to '$SSID' on $WIFI_DEV..."
-iwctl station "$WIFI_DEV" connect "$SSID" --passphrase "$PASS"
+if [ "$SECURITY" = "nopass" ]; then
+    iwctl station "$WIFI_DEV" connect "$SSID"
+else
+    iwctl station "$WIFI_DEV" connect "$SSID" --passphrase "$PASS"
+fi
 
 if [ $? -eq 0 ]; then
     echo "Successfully connected!"
